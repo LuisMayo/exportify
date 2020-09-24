@@ -341,34 +341,9 @@ var PlaylistExporter = {
         });
       });
 
-      // Flatten the array of pages
-      tracks = $.map(tracks, function(n) { return n })
-
-      tracks.unshift([
-        "Spotify URI",
-        "Track Name",
-        "Artist Name",
-        "Album Name",
-        "Disc Number",
-        "Track Number",
-        "Track Duration (ms)",
-        "Added By",
-        "Added At"
-      ]);
-
-      csvContent = '';
-      tracks.forEach(function(infoArray, index){
-        dataString = infoArray.join(",");
-        csvContent += index < tracks.length ? dataString+ "\n" : dataString;
-      });
-
       return csvContent;
     });
   },
-
-  fileName: function(playlist) {
-    return playlist.name.replace(/[^a-z0-9\- ]/gi, '').replace(/[ ]/gi, '_').toLowerCase() + ".csv";
-  }
 }
 
 $(function() {
