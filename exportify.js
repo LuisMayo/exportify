@@ -4,7 +4,7 @@ window.Helpers = {
 
     // Use Exportify application client_id if none given
     if (client_id == '') {
-      client_id = "224f43b094164edc9db80dd083122296127.0.0.1%3A8080"
+      client_id = "224f43b094164edc9db80dd083122296"
     }
 
     window.location = "https://accounts.spotify.com/authorize" +
@@ -97,6 +97,7 @@ var PlaylistTable = React.createClass({
 
         $('#playlists').fadeIn();
         $('#subtitle').text((response.offset + 1) + '-' + (response.offset + response.items.length) + ' of ' + response.total + ' playlists for ' + userId)
+        $('#ultrastarCredentials').show();
       }
     }.bind(this))
   },
@@ -123,7 +124,7 @@ var PlaylistTable = React.createClass({
                 <th style={{width: "100px"}}>Tracks</th>
                 <th style={{width: "120px"}}>Public?</th>
                 <th style={{width: "120px"}}>Collaborative?</th>
-                <th style={{width: "100px"}} className="text-right"><button className="btn btn-default btn-xs" type="submit" onClick={this.exportPlaylists}><span className="fa fa-file-archive-o"></span> Export All</button></th>
+                <th style={{width: "100px", display: "none"}} className="text-right"><button className="btn btn-default btn-xs" type="submit" onClick={this.exportPlaylists}><span className="fa fa-file-archive-o"></span> Export All</button></th>
               </tr>
             </thead>
             <tbody>
@@ -275,7 +276,7 @@ var PlaylistsExporter = {
 
         $(playlists).each(function(i, playlist) {
           playlistFileNames.push(PlaylistExporter.fileName(playlist));
-          playlistExports.push(PlaylistExporter.csvData(access_token, playlist));
+          playlistExports.push(PlaylistExporter.getJSONPlaylist(access_token, playlist));
         });
 
         return $.when.apply($, playlistExports);
@@ -297,51 +298,43 @@ var PlaylistsExporter = {
 // Handles exporting a single playlist as a CSV file
 var PlaylistExporter = {
   export: function(access_token, playlist) {
-    this.csvData(access_token, playlist).then(function(data) {
-      var blob = new Blob(["\uFEFF" + data], { type: "text/csv;charset=utf-8" });
-      saveAs(blob, this.fileName(playlist));
+    this.getJSONPlaylist(access_token, playlist).then(function(data) {
+      var blob = new Blob([data], { type: "application/json; encoding: utf-8" });
+      saveAs(blob, playlist.name + '.json');
     }.bind(this))
   },
 
-  csvData: function(access_token, playlist) {
-    var requests = [];
-    var limit = 100;
-
-    for (var offset = 0; offset < playlist.tracks.total; offset = offset + limit) {
-      requests.push(
-        window.Helpers.apiCall(playlist.tracks.href.split('?')[0] + '?offset=' + offset + '&limit=' + limit, access_token)
-      )
-    }
-
-    return $.when.apply($, requests).then(function() {
-      var responses = [];
-
-      // Handle either single or multiple responses
-      if (typeof arguments[0] != 'undefined') {
-        if (typeof arguments[0].href == 'undefined') {
-          responses = Array.prototype.slice.call(arguments).map(function(a) { return a[0] });
-        } else {
-          responses = [arguments[0]];
+  getJSONPlaylist: function(access_token, playlist) {
+    return new Promise((resolve, reject) => {
+        var requests = [];
+        var limit = 100;
+    
+        for (var offset = 0; offset < playlist.tracks.total; offset = offset + limit) {
+          requests.push(
+            window.Helpers.apiCall(playlist.tracks.href.split('?')[0] + '?offset=' + offset + '&limit=' + limit, access_token)
+          )
         }
-      }
-
-      var tracks = responses.map(function(response) {
-        return response.items.map(function(item) {
-          return [
-            item.track.uri,
-            item.track.name,
-            item.track.artists.map(function(artist) { return artist.name }).join(', '),
-            item.track.album.name,
-            item.track.disc_number,
-            item.track.track_number,
-            item.track.duration_ms,
-            item.added_by == null ? '' : item.added_by.uri,
-            item.added_at
-          ].map(function(track) { return '"' + track + '"'; })
+    
+        $.when.apply($, requests).then(function() {
+          var responses = [];
+    
+          // Handle either single or multiple responses
+          if (typeof arguments[0] != 'undefined') {
+            if (typeof arguments[0].href == 'undefined') {
+              responses = Array.prototype.slice.call(arguments).map(function(a) { return a[0] });
+            } else {
+              responses = [arguments[0]];
+            }
+          }
+    
+          const allTracks = responses.map(response => response.items).flat().map(track => track.track);
+          const itemPetition = allTracks.map(track => {
+            return {
+                title: track.name, artist: track.artists.map(function(artist) { return artist.name }).join(', ')
+            }
+          });
+          resolve(JSON.stringify({username: $('#username').val(), password: $('#password').val(), songs: itemPetition}));
         });
-      });
-
-      return csvContent;
     });
   },
 }
