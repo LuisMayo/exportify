@@ -330,7 +330,7 @@ var PlaylistExporter = {
           const allTracks = responses.map(response => response.items).flat().map(track => track.track);
           const itemPetition = allTracks.map(track => {
             return {
-                title: track.name, artist: track.artists.map(function(artist) { return artist.name }).join(', ')
+                title: track.name, artist: track.artists.map(function(artist) { return artist.name }).join(' & ')
             }
           });
           resolve(JSON.stringify({username: $('#username').val(), password: $('#password').val(), songs: itemPetition}));
